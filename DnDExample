@@ -1,0 +1,104 @@
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.UnsupportedFlavorException;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.DropTargetAdapter;
+import java.awt.dnd.DropTargetDropEvent;
+import java.io.IOException;
+
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+
+public class DnDExample extends JFrame {
+    
+    private JPanel panel;
+    private JLabel label1, label2;
+    
+    public DnDExample() {
+        super("Drag and Drop Example");
+        setSize(300, 200);
+        setLayout(new FlowLayout());
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        
+        panel = new JPanel();
+        panel.setPreferredSize(new Dimension(200, 100));
+        panel.setBackground(Color.WHITE);
+        add(panel);
+        
+        label1 = new JLabel("Drag me!");
+        label1.setTransferHandler(new LabelTransferHandler());
+        panel.add(label1);
+        
+        label2 = new JLabel("Drop here!");
+        label2.setTransferHandler(new LabelTransferHandler());
+        panel.add(label2);
+        
+        setDropTarget(new DropTarget(panel, new PanelDropTargetAdapter()));
+    }
+    
+    private class LabelTransferHandler extends TransferHandler {
+        
+        @Override
+        public int getSourceActions(JLabel c) {
+            return DnDConstants.ACTION_COPY_OR_MOVE;
+        }
+        
+        @Override
+        protected Transferable createTransferable(JLabel c) {
+            return new StringSelection(c.getText());
+        }
+        
+        @Override
+        protected void exportDone(JLabel source, Transferable data, int action) {
+            if (action == DnDConstants.ACTION_MOVE) {
+                source.setText("");
+            }
+        }
+        
+        @Override
+        public boolean canImport(TransferHandler.TransferSupport support) {
+            return support.isDataFlavorSupported(DataFlavor.stringFlavor);
+        }
+        
+        @Override
+        public boolean importData(TransferHandler.TransferSupport support) {
+            if (!canImport(support)) {
+                return false;
+            }
+            
+            try {
+                String text = (String) support.getTransferable().getTransferData(DataFlavor.stringFlavor);
+                ((JLabel) support.getComponent()).setText(text);
+                return true;
+            } catch (UnsupportedFlavorException | IOException e) {
+                return false;
+            }
+        }
+    }
+    
+    private class PanelDropTargetAdapter extends DropTargetAdapter {
+        
+        @Override
+        public void drop(DropTargetDropEvent event) {
+            event.acceptDrop(DnDConstants.ACTION_COPY_OR_MOVE);
+            Transferable transferable = event.getTransferable();
+            
+            try {
+                String text = (String) transferable.getTransferData(DataFlavor.stringFlavor);
+                label2.setText(text);
+                event.dropComplete(true);
+            } catch (UnsupportedFlavorException | IOException e) {
+                event.dropComplete(false);
+            }
+        }
+    }
+    
+    public static void main(String[] args) {
+        new DnDExample().setVisible(true);
+    }
+}
